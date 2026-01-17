@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,20 +9,46 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  FlatList,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { sendMessage, generateChatTitle, Message } from '../../services/aiService';
+import { useChat } from '../../context/ChatContext';
 
 const { width } = Dimensions.get('window');
 const PANEL_WIDTH = width * 0.85;
 
 export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isPanelVisible, setIsPanelVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   
+  const {
+    sessions,
+    currentSession,
+    createNewChat,
+    selectChat,
+    addMessage,
+    setSessionTitle,
+    deleteChat,
+  } = useChat();
+
   const slideAnim = useRef(new Animated.Value(-PANEL_WIDTH)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<FlatList>(null);
+
+  // Create a new chat if none exists
+  useEffect(() => {
+    if (!currentSession && sessions.length === 0) {
+      createNewChat();
+    }
+  }, [currentSession, sessions.length, createNewChat]);
 
   const openPanel = useCallback(() => {
     setIsPanelVisible(true);
@@ -66,8 +92,129 @@ export default function ChatScreen() {
   }, [slideAnim, overlayAnim]);
 
   const handleNewChat = useCallback(() => {
+    createNewChat();
     closePanel();
-  }, [closePanel]);
+  }, [createNewChat, closePanel]);
+
+  const handleSelectChat = useCallback((id: string) => {
+    selectChat(id);
+    closePanel();
+  }, [selectChat, closePanel]);
+
+  const handleDeletePress = useCallback((id: string) => {
+    setChatToDelete(id);
+    setDeleteModalVisible(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (chatToDelete) {
+      deleteChat(chatToDelete);
+      setChatToDelete(null);
+      setDeleteModalVisible(false);
+    }
+  }, [chatToDelete, deleteChat]);
+
+  const handleCancelDelete = useCallback(() => {
+    setChatToDelete(null);
+    setDeleteModalVisible(false);
+  }, []);
+
+  const handleSend = useCallback(async () => {
+    if (!inputText.trim() || isLoading || !currentSession) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: inputText.trim(),
+    };
+
+    const isFirstMessage = currentSession.messages.length === 0;
+    const userMessageContent = inputText.trim();
+
+    addMessage(userMessage);
+    setInputText('');
+    setIsLoading(true);
+
+    try {
+      // Generate title after first user message (in parallel with AI response)
+      const [response, title] = await Promise.all([
+        sendMessage([...currentSession.messages, userMessage]),
+        isFirstMessage && !currentSession.title
+          ? generateChatTitle(userMessageContent)
+          : Promise.resolve(null),
+      ]);
+
+      // Set title if generated
+      if (title) {
+        setSessionTitle(title);
+      }
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response,
+      };
+      addMessage(assistantMessage);
+    } catch (error) {
+      const errorText = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: errorText,
+      };
+      addMessage(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [inputText, currentSession, isLoading, addMessage, setSessionTitle]);
+
+  const renderMessage = useCallback(({ item }: { item: Message }) => (
+    <View
+      style={[
+        styles.messageBubble,
+        item.role === 'user' ? styles.userBubble : styles.assistantBubble,
+      ]}
+    >
+      <Text
+        style={[
+          styles.messageText,
+          item.role === 'user' ? styles.userText : styles.assistantText,
+        ]}
+      >
+        {item.content}
+      </Text>
+    </View>
+  ), []);
+
+  const renderChatItem = useCallback(({ item }: { item: typeof sessions[0] }) => (
+    <TouchableOpacity
+      style={[
+        styles.chatItem,
+        item.id === currentSession?.id && styles.chatItemActive,
+      ]}
+      onPress={() => handleSelectChat(item.id)}
+    >
+      <Text
+        style={[
+          styles.chatItemTitle,
+          item.id === currentSession?.id && styles.chatItemTitleActive,
+        ]}
+        numberOfLines={1}
+      >
+        {item.title || 'New Chat'}
+      </Text>
+      <TouchableOpacity
+        onPress={() => handleDeletePress(item.id)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="ellipsis-vertical" size={18} color={Colors.textMuted} />
+      </TouchableOpacity>
+    </TouchableOpacity>
+  ), [currentSession?.id, handleSelectChat, handleDeletePress]);
+
+  const messages = currentSession?.messages || [];
+  const hasMessages = messages.length > 0;
+  const displayTitle = currentSession?.title || 'Bible AI';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -76,29 +223,51 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={openPanel} style={styles.menuButton}>
           <Ionicons name="menu" size={28} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bible AI</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {displayTitle}
+        </Text>
         <View style={styles.headerRight} />
       </View>
 
       {/* Main Content */}
-      <View style={styles.mainContent}>
-        <View style={styles.topSection}>
-          <Text style={styles.mainTitle}>Ask Bible AI anything</Text>
-          <Text style={styles.mainDescription}>
-            Ask about love, purpose, faith, fear,{'\n'}
-            temptation, doubt, and the meaning of life.{'\n'}
-            Guided by Scripture. Rooted in truth.
-          </Text>
-        </View>
+      {!hasMessages ? (
+        <View style={styles.mainContent}>
+          <View style={styles.topSection}>
+            <Text style={styles.mainTitle}>Ask Bible AI anything</Text>
+            <Text style={styles.mainDescription}>
+              Ask about love, purpose, faith, fear,{'\n'}
+              temptation, doubt, and the meaning of life.{'\n'}
+              Guided by Scripture. Rooted in truth.
+            </Text>
+          </View>
 
-        {/* Cross Icon */}
-        <View style={styles.crossSection}>
-          <View style={styles.cross}>
-            <View style={styles.crossVertical} />
-            <View style={styles.crossHorizontal} />
+          {/* Cross Icon */}
+          <View style={styles.crossSection}>
+            <View style={styles.cross}>
+              <View style={styles.crossVertical} />
+              <View style={styles.crossHorizontal} />
+            </View>
           </View>
         </View>
-      </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messagesList}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+
+      {/* Loading indicator */}
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={Colors.primary} />
+          <Text style={styles.loadingText}>Thinking...</Text>
+        </View>
+      )}
 
       {/* Input Area */}
       <KeyboardAvoidingView
@@ -117,10 +286,20 @@ export default function ChatScreen() {
               value={inputText}
               onChangeText={setInputText}
               multiline
+              onSubmitEditing={handleSend}
+              returnKeyType="send"
             />
           </View>
-          <TouchableOpacity style={styles.sendButton}>
-            <Ionicons name="navigate" size={22} color={Colors.textMuted} />
+          <TouchableOpacity
+            style={[styles.sendButton, inputText.trim() && styles.sendButtonActive]}
+            onPress={handleSend}
+            disabled={!inputText.trim() || isLoading}
+          >
+            <Ionicons
+              name="arrow-up"
+              size={22}
+              color={inputText.trim() ? Colors.white : Colors.textMuted}
+            />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -171,11 +350,44 @@ export default function ChatScreen() {
                 <Text style={styles.newChatText}>New Chat</Text>
               </TouchableOpacity>
 
-              <Text style={styles.emptyStateText}>No previous conversations</Text>
+              {sessions.length > 0 ? (
+                <FlatList
+                  data={sessions}
+                  renderItem={renderChatItem}
+                  keyExtractor={(item) => item.id}
+                  showsVerticalScrollIndicator={false}
+                  style={styles.chatList}
+                />
+              ) : (
+                <Text style={styles.emptyStateText}>No conversations yet</Text>
+              )}
             </View>
           </Animated.View>
         </>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={deleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelDelete}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Delete chat?</Text>
+            <Text style={styles.modalBody}>
+              This will permanently delete this chat and all its messages. This action cannot be undone.
+            </Text>
+            <TouchableOpacity style={styles.deleteButton} onPress={handleConfirmDelete}>
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelDelete}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -199,9 +411,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    flex: 1,
+    fontSize: 18,
     fontWeight: '600',
     color: Colors.primary,
+    textAlign: 'center',
+    marginHorizontal: 8,
   },
   headerRight: {
     width: 44,
@@ -255,12 +470,54 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     top: 26,
   },
+  messagesList: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  messageBubble: {
+    maxWidth: '85%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginVertical: 4,
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    backgroundColor: Colors.primary,
+    borderBottomRightRadius: 4,
+  },
+  assistantBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F0F0F0',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  userText: {
+    color: Colors.white,
+  },
+  assistantText: {
+    color: Colors.text,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: Colors.textMuted,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: 28,
+    paddingVertical: 8,
+    paddingBottom: 12,
     gap: 10,
   },
   micButton: {
@@ -288,6 +545,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sendButtonActive: {
+    backgroundColor: Colors.primary,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -337,10 +597,88 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
   },
+  chatList: {
+    flex: 1,
+  },
+  chatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  chatItemActive: {
+    backgroundColor: Colors.primaryLight,
+  },
+  chatItemTitle: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  chatItemTitleActive: {
+    color: Colors.primary,
+    fontWeight: '500',
+  },
   emptyStateText: {
     fontSize: 16,
     color: Colors.textMuted,
     textAlign: 'center',
     marginTop: 20,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    width: '100%',
+    maxWidth: 320,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalBody: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  deleteButton: {
+    backgroundColor: '#D32F2F',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  deleteButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: Colors.white,
+  },
+  cancelButton: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 17,
+    fontWeight: '500',
+    color: Colors.text,
   },
 });

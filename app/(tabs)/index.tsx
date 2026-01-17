@@ -36,7 +36,7 @@ export default function HomeScreen() {
   return (
     <TouchableWithoutFeedback onPress={handleTap}>
       <View style={styles.container}>
-        {/* Cross - Fixed position, moved down */}
+        {/* Cross - Fixed position */}
         <View style={styles.crossContainer} pointerEvents="none">
           <View style={styles.cross}>
             <View style={styles.crossVertical} />
@@ -99,25 +99,25 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 120,
-    paddingHorizontal: 36,
+    paddingHorizontal: 32,
     alignItems: 'center',
   },
   verseContainer: {
     alignItems: 'center',
   },
   verseText: {
-    fontSize: 21,
-    fontStyle: 'italic',
-    color: '#3D3D3D',
+    fontSize: 24,
+    color: '#3D4856',
     textAlign: 'center',
-    lineHeight: 32,
-    letterSpacing: 0.3,
+    lineHeight: 38,
+    fontWeight: '400',
+    letterSpacing: -0.3,
   },
   verseReference: {
-    fontSize: 17,
-    color: Colors.primary,
-    marginTop: 36,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontFamily: 'System',
+    fontSize: 18,
+    color: '#D4922A',
+    marginTop: 40,
+    fontWeight: '400',
   },
 });

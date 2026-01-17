@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { BIBLE_BOOKS, BibleBook, BibleVerse } from '../../data/bibleData';
 import { getChapter } from '../../services/bibleService';
@@ -26,7 +27,7 @@ const CELL_SIZE = (width - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / G
 type ViewState =
   | { type: 'books'; filter: 'all' | 'old' | 'new' }
   | { type: 'chapters'; book: BibleBook }
-  | { type: 'verses'; book: BibleBook; chapter: number };
+  | { type: 'verses'; book: BibleBook; chapter: number; highlightVerse?: number };
 
 // Book preview texts
 const BOOK_PREVIEWS: Record<string, string> = {
@@ -99,10 +100,11 @@ function ChapterCell({ chapter, onPress, index }: { chapter: number; onPress: ()
   );
 }
 
-function VerseCard({ verse, index }: { verse: BibleVerse; index: number }) {
+function VerseCard({ verse, index, isHighlighted }: { verse: BibleVerse; index: number; isHighlighted?: boolean }) {
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(15)).current;
+  const [showHighlight, setShowHighlight] = useState(isHighlighted);
   const bookmarked = isBookmarked(verse);
 
   useEffect(() => {
@@ -113,8 +115,23 @@ function VerseCard({ verse, index }: { verse: BibleVerse; index: number }) {
     ]).start();
   }, []);
 
+  useEffect(() => {
+    if (isHighlighted) {
+      setShowHighlight(true);
+      // Remove highlight after delay
+      const timer = setTimeout(() => {
+        setShowHighlight(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isHighlighted]);
+
   return (
-    <Animated.View style={[styles.verseCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+    <Animated.View style={[
+      styles.verseCard,
+      { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+      showHighlight && styles.verseCardHighlighted,
+    ]}>
       <View style={styles.verseNumberContainer}>
         <Text style={styles.verseNumber}>{verse.verse}</Text>
       </View>
@@ -218,12 +235,36 @@ function ChaptersGridScreen({ book, onBack, onSelectChapter }: { book: BibleBook
   );
 }
 
-function VersesListScreen({ book, chapter, onBack }: { book: BibleBook; chapter: number; onBack: () => void }) {
+function VersesListScreen({ book, chapter, onBack, highlightVerse }: { book: BibleBook; chapter: number; onBack: () => void; highlightVerse?: number }) {
   const [verses, setVerses] = useState<BibleVerse[]>([]);
+  const flatListRef = useRef<FlatList>(null);
+
   useEffect(() => {
     const chapterData = getChapter(book.name, chapter);
     if (chapterData) setVerses(chapterData.verses);
   }, [book.name, chapter]);
+
+  // Scroll to highlighted verse when verses are loaded
+  useEffect(() => {
+    if (highlightVerse && verses.length > 0 && flatListRef.current) {
+      const verseIndex = verses.findIndex((v) => v.verse === highlightVerse);
+      if (verseIndex >= 0) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: verseIndex,
+            animated: true,
+            viewPosition: 0.3,
+          });
+        }, 500);
+      }
+    }
+  }, [highlightVerse, verses]);
+
+  const handleScrollToIndexFailed = (info: { index: number }) => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+    }, 100);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -234,16 +275,53 @@ function VersesListScreen({ book, chapter, onBack }: { book: BibleBook; chapter:
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chapter {chapter}</Text>
       </View>
-      <FlatList data={verses} keyExtractor={(item) => `${item.book}-${item.chapter}-${item.verse}`}
-        renderItem={({ item, index }) => <VerseCard verse={item} index={index} />}
-        contentContainerStyle={styles.verseListContent} showsVerticalScrollIndicator={false} />
+      <FlatList
+        ref={flatListRef}
+        data={verses}
+        keyExtractor={(item) => `${item.book}-${item.chapter}-${item.verse}`}
+        renderItem={({ item, index }) => (
+          <VerseCard verse={item} index={index} isHighlighted={highlightVerse === item.verse} />
+        )}
+        contentContainerStyle={styles.verseListContent}
+        showsVerticalScrollIndicator={false}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
+      />
     </SafeAreaView>
   );
 }
 
 export default function BibleScreen() {
+  const params = useLocalSearchParams<{ book?: string; chapter?: string; verse?: string }>();
   const [viewState, setViewState] = useState<ViewState>({ type: 'books', filter: 'all' });
   const [searchQuery, setSearchQuery] = useState('');
+  const [processedParams, setProcessedParams] = useState(false);
+
+  // Handle deep link params from bookmarks
+  useEffect(() => {
+    if (params.book && params.chapter && !processedParams) {
+      const bookName = params.book;
+      const chapterNum = parseInt(params.chapter, 10);
+      const verseNum = params.verse ? parseInt(params.verse, 10) : undefined;
+
+      const book = BIBLE_BOOKS.find((b) => b.name === bookName);
+      if (book && chapterNum) {
+        setViewState({
+          type: 'verses',
+          book,
+          chapter: chapterNum,
+          highlightVerse: verseNum,
+        });
+        setProcessedParams(true);
+      }
+    }
+  }, [params.book, params.chapter, params.verse, processedParams]);
+
+  // Reset processedParams when params change (new navigation)
+  useEffect(() => {
+    if (params.book && params.chapter) {
+      setProcessedParams(false);
+    }
+  }, [params.book, params.chapter, params.verse]);
 
   const handleSelectBook = useCallback((book: BibleBook) => setViewState({ type: 'chapters', book }), []);
   const handleSelectChapter = useCallback((chapter: number) => {
@@ -262,7 +340,7 @@ export default function BibleScreen() {
     return <ChaptersGridScreen book={viewState.book} onBack={handleBackFromChapters} onSelectChapter={handleSelectChapter} />;
   }
   if (viewState.type === 'verses') {
-    return <VersesListScreen book={viewState.book} chapter={viewState.chapter} onBack={handleBackFromVerses} />;
+    return <VersesListScreen book={viewState.book} chapter={viewState.chapter} onBack={handleBackFromVerses} highlightVerse={viewState.highlightVerse} />;
   }
   return null;
 }
@@ -426,7 +504,6 @@ const styles = StyleSheet.create({
   },
   verseCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFDF9',
     borderRadius: 16,
     borderWidth: 2,
     borderColor: Colors.primaryBorder,
@@ -434,6 +511,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 14,
     alignItems: 'flex-start',
+    backgroundColor: '#FFFDF9',
+  },
+  verseCardHighlighted: {
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primary,
   },
   verseNumberContainer: {
     width: 36,

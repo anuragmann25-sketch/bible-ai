@@ -4,28 +4,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const ONBOARDING_KEY = '@bible_ai_onboarding_completed';
 const ONBOARDING_DATA_KEY = '@bible_ai_onboarding_data';
 
-interface OnboardingData {
-  gender?: string;
-  faithRelationship?: string;
-  temptationStruggle?: string;
-  trustLevel?: string;
-  purposeClarity?: string;
+export interface OnboardingData {
+  gender?: 'male' | 'female' | 'other';
+  birthDate?: string; // ISO date string
+  age?: number;
+  spiritualState?: 'lost' | 'searching' | 'strong' | 'returning';
   prayerFrequency?: string;
-  bibleReadingHabit?: string;
-  spiritualGoals?: string[];
-  disciplineAreas?: string[];
-  communityConnection?: string;
-  gratitudePractice?: string;
-  forgivenessJourney?: string;
-  hopeLevel?: string;
-  commitmentLevel?: string;
+  biggestStruggle?: string;
+  currentStruggle?: string;
+  feelsDistant?: boolean;
+  seeking?: string;
+  temptationStrength?: number;
+  doubtFrequency?: 'low' | 'medium' | 'high';
+  motivation?: string;
+  wantsDailyGuidance?: boolean;
+  guidanceStyle?: 'gentle' | 'direct';
 }
 
 interface OnboardingContextType {
   hasCompletedOnboarding: boolean | null;
   onboardingData: OnboardingData;
   isLoading: boolean;
-  updateOnboardingData: (key: keyof OnboardingData, value: any) => void;
+  updateOnboardingData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   completeOnboarding: () => Promise<void>;
   resetOnboarding: () => Promise<void>;
 }
@@ -60,7 +60,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateOnboardingData = (key: keyof OnboardingData, value: any) => {
+  const updateOnboardingData = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => {
     setOnboardingData(prev => ({ ...prev, [key]: value }));
   };
 
