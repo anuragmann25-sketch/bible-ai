@@ -21,30 +21,39 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load sessions from storage on mount
   useEffect(() => {
     loadSessions();
   }, []);
 
-  // Save sessions to storage whenever they change
   useEffect(() => {
-    saveSessions();
-  }, [sessions]);
+    if (isLoaded) {
+      saveSessions();
+    }
+  }, [sessions, isLoaded]);
 
   const loadSessions = async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as ChatSession[];
-        setSessions(parsed);
-        // Select the most recent chat if available
-        if (parsed.length > 0) {
-          setCurrentSessionId(parsed[0].id);
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setSessions(parsed);
+            if (parsed.length > 0) {
+              setCurrentSessionId(parsed[0].id);
+            }
+          }
+        } catch (parseError) {
+          console.error('Corrupted chat data, resetting:', parseError);
+          await AsyncStorage.removeItem(STORAGE_KEY);
         }
       }
     } catch (error) {
       console.error('Failed to load chat sessions:', error);
+    } finally {
+      setIsLoaded(true);
     }
   };
 
@@ -66,23 +75,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const currentSession = sessions.find((s) => s.id === currentSessionId) || null;
 
-  // Only ONE active chat allowed - reuse existing empty chat or clear current
   const createNewChat = useCallback(() => {
-    // Check if there's already an empty "New Chat" (no title, no messages)
     const existingEmptyChat = sessions.find((s) => !s.title && s.messages.length === 0);
     
     if (existingEmptyChat) {
-      // Just select the existing empty chat
       setCurrentSessionId(existingEmptyChat.id);
       return;
     }
 
-    // If current session exists and has no messages, just reuse it
     if (currentSession && currentSession.messages.length === 0 && !currentSession.title) {
       return;
     }
 
-    // Create a new empty chat
     const newSession: ChatSession = {
       id: Date.now().toString(),
       title: '',
@@ -120,12 +124,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const deleteChat = useCallback((id: string) => {
     setSessions((prev) => {
       const filtered = prev.filter((s) => s.id !== id);
-      // If we deleted the current chat, select another one or create new
       if (id === currentSessionId) {
         if (filtered.length > 0) {
           setCurrentSessionId(filtered[0].id);
         } else {
-          // Create a fresh chat if none left
           const newSession: ChatSession = {
             id: Date.now().toString(),
             title: '',

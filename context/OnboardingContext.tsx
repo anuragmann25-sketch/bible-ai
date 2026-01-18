@@ -6,7 +6,7 @@ const ONBOARDING_DATA_KEY = '@bible_ai_onboarding_data';
 
 export interface OnboardingData {
   gender?: 'male' | 'female' | 'other';
-  birthDate?: string; // ISO date string
+  birthDate?: string;
   age?: number;
   spiritualState?: 'lost' | 'searching' | 'strong' | 'returning';
   prayerFrequency?: string;
@@ -50,7 +50,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       
       setHasCompletedOnboarding(completed === 'true');
       if (data) {
-        setOnboardingData(JSON.parse(data));
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed && typeof parsed === 'object') {
+            setOnboardingData(parsed);
+          }
+        } catch (parseError) {
+          console.error('Corrupted onboarding data, resetting:', parseError);
+          await AsyncStorage.removeItem(ONBOARDING_DATA_KEY);
+        }
       }
     } catch (error) {
       console.error('Error loading onboarding state:', error);

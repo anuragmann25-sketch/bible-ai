@@ -8,27 +8,31 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ currentStep, totalSteps }: ProgressBarProps) {
-  const progress = useRef(new Animated.Value(0)).current;
+  const animatedWidth = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(progress, {
-      toValue: currentStep / totalSteps,
+    const progress = (currentStep / totalSteps) * 100;
+    Animated.timing(animatedWidth, {
+      toValue: progress,
       duration: 400,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
   }, [currentStep, totalSteps]);
 
-  const width = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
-
   return (
     <View style={styles.container}>
-      <View style={styles.track}>
-        <Animated.View style={[styles.fill, { width }]} />
-      </View>
+      <Animated.View
+        style={[
+          styles.progress,
+          {
+            width: animatedWidth.interpolate({
+              inputRange: [0, 100],
+              outputRange: ['0%', '100%'],
+            }),
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -36,17 +40,14 @@ export function ProgressBar({ currentStep, totalSteps }: ProgressBarProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-  },
-  track: {
-    height: 4,
+    height: 6,
     backgroundColor: Colors.progressBackground,
-    borderRadius: 2,
+    borderRadius: 3,
     overflow: 'hidden',
   },
-  fill: {
+  progress: {
     height: '100%',
-    backgroundColor: Colors.text,
-    borderRadius: 2,
+    backgroundColor: Colors.selectedCard,
+    borderRadius: 3,
   },
 });

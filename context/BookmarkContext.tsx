@@ -24,7 +24,40 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
     try {
       const saved = await AsyncStorage.getItem(BOOKMARKS_KEY);
       if (saved) {
-        setBookmarks(JSON.parse(saved));
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            // Normalize bookmark data - handle old format with v/t keys
+            const normalizedBookmarks: BibleVerse[] = parsed.map((item: any) => {
+              // If the item uses old format (v, t), convert to new format (verse, text)
+              if (item.v !== undefined && item.t !== undefined) {
+                return {
+                  book: item.book || item.b || '',
+                  chapter: item.chapter || item.c || 1,
+                  verse: item.v,
+                  text: item.t,
+                };
+              }
+              // Already in correct format
+              return {
+                book: item.book || '',
+                chapter: item.chapter || 1,
+                verse: item.verse || 1,
+                text: item.text || '',
+              };
+            }).filter((v: BibleVerse) => v.book && v.text); // Filter out invalid entries
+            
+            setBookmarks(normalizedBookmarks);
+            
+            // Save normalized data back to storage
+            if (JSON.stringify(parsed) !== JSON.stringify(normalizedBookmarks)) {
+              await AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(normalizedBookmarks));
+            }
+          }
+        } catch (parseError) {
+          console.error('Corrupted bookmark data, resetting:', parseError);
+          await AsyncStorage.removeItem(BOOKMARKS_KEY);
+        }
       }
     } catch (error) {
       console.error('Error loading bookmarks:', error);

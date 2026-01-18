@@ -1,5 +1,3 @@
-// API key should be set via environment variable
-// For development, create a .env file with EXPO_PUBLIC_OPENAI_API_KEY=your_key
 const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY || '';
 
 const SYSTEM_PROMPT = `You are Bible AI — a wise, loving guide rooted in Scripture.
@@ -26,6 +24,12 @@ Guidelines:
 
 You are here to help, guide, and comfort — nothing more.`;
 
+const FALLBACK_MESSAGES = {
+  offline: "I can't connect right now. Please check your internet connection and try again.",
+  apiError: "I'm having trouble responding right now. Please try again in a moment.",
+  noApiKey: "The app isn't fully configured yet. Please contact support.",
+};
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -39,41 +43,68 @@ export interface ChatSession {
   createdAt: number;
 }
 
+export function isAIConfigured(): boolean {
+  return Boolean(OPENAI_API_KEY && OPENAI_API_KEY.length > 10);
+}
+
 async function makeOpenAIRequest(
   messages: { role: string; content: string }[],
   maxTokens: number = 1000
 ): Promise<string> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages,
-      temperature: 0.7,
-      max_tokens: maxTokens,
-    }),
-  });
+  if (!isAIConfigured()) {
+    throw new Error(FALLBACK_MESSAGES.noApiKey);
+  }
+
+  let response: Response;
+  
+  try {
+    response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages,
+        temperature: 0.7,
+        max_tokens: maxTokens,
+      }),
+    });
+  } catch (networkError) {
+    console.error('Network error:', networkError);
+    throw new Error(FALLBACK_MESSAGES.offline);
+  }
 
   if (!response.ok) {
-    const error = await response.json();
-    const errorMessage = error.error?.message || 'Failed to get response';
+    let errorMessage = 'Failed to get response';
+    try {
+      const error = await response.json();
+      errorMessage = error.error?.message || errorMessage;
+    } catch {
+      errorMessage = response.statusText || errorMessage;
+    }
+    
     console.error('OpenAI API Error:', errorMessage);
     
     if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
-      throw new Error('API quota exceeded. Please check your OpenAI billing at platform.openai.com');
+      throw new Error('Service temporarily unavailable. Please try again later.');
     }
     if (errorMessage.includes('invalid_api_key') || errorMessage.includes('Incorrect API key')) {
-      throw new Error('Invalid API key. Please check your OpenAI API key.');
+      throw new Error(FALLBACK_MESSAGES.noApiKey);
     }
     
-    throw new Error(errorMessage);
+    throw new Error(FALLBACK_MESSAGES.apiError);
   }
 
-  const data = await response.json();
-  return data.choices[0]?.message?.content || '';
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(FALLBACK_MESSAGES.apiError);
+  }
+  
+  return data.choices?.[0]?.message?.content || '';
 }
 
 export async function sendMessage(messages: Message[]): Promise<string> {
@@ -85,7 +116,10 @@ export async function sendMessage(messages: Message[]): Promise<string> {
     return result || 'I am here for you. Please try again.';
   } catch (error) {
     console.error('AI Service Error:', error);
-    throw error;
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return FALLBACK_MESSAGES.apiError;
   }
 }
 
@@ -99,10 +133,9 @@ export async function generateChatTitle(userMessage: string): Promise<string> {
       { role: 'user', content: userMessage },
     ], 20);
     
-    // Clean up the title
     let title = result.trim();
-    title = title.replace(/^["']|["']$/g, ''); // Remove quotes
-    title = title.replace(/[.!?]$/, ''); // Remove trailing punctuation
+    title = title.replace(/^["']|["']$/g, '');
+    title = title.replace(/[.!?]$/, '');
     
     return title || 'New Chat';
   } catch (error) {

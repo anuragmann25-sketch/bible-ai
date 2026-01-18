@@ -1,13 +1,13 @@
 export const Colors = {
-  // Primary accent - bright warm golden yellow
-  primary: '#E8A838',
-  primaryDark: '#D4952E',
-  primaryLight: '#FFF5E0',
-  primaryBorder: 'rgba(232, 168, 56, 0.35)',
+  // Primary - black (matching onboarding selected state)
+  primary: '#1A1A1A',
+  primaryDark: '#000000',
+  primaryLight: '#F5F5F5',
+  primaryBorder: '#E8E8E8',
   
   // Backgrounds
   background: '#FFFFFF',
-  cardBackground: '#FFFCF7',
+  cardBackground: '#FFFFFF',
   inputBackground: '#F5F5F5',
   
   // Text colors
@@ -17,10 +17,10 @@ export const Colors = {
   textLight: '#CCCCCC',
   
   // UI elements
-  iconDark: '#2C3E50',
+  iconDark: '#1A1A1A',
   white: '#FFFFFF',
   black: '#000000',
-  tabInactive: '#8E8E93',
+  tabInactive: '#9A9A9A',
   
   // Onboarding specific
   progressBackground: '#E8E8E8',
@@ -28,6 +28,6 @@ export const Colors = {
   unselectedCard: '#F5F5F5',
   
   // Semantic
-  success: '#4CAF50',
-  error: '#F44336',
+  success: '#4A4A4A',
+  error: '#D32F2F',
 };

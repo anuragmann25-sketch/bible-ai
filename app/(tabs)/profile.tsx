@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -35,7 +35,6 @@ export default function ProfileScreen() {
   };
 
   const handleVersePress = (verse: BibleVerse) => {
-    // Navigate to Bible tab with verse params
     router.push({
       pathname: '/(tabs)/bible',
       params: {
@@ -67,7 +66,6 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Avatar Section */}
         <View style={styles.avatarSection}>
           <View style={styles.avatarContainer}>
             <Ionicons name="person-outline" size={48} color={Colors.white} />
@@ -76,7 +74,6 @@ export default function ProfileScreen() {
           <Text style={styles.userSubtitle}>Walking in faith</Text>
         </View>
 
-        {/* Bookmarks Section */}
         <View style={styles.bookmarksSection}>
           <Text style={styles.sectionTitle}>Bookmarked Verses</Text>
 
@@ -99,7 +96,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Settings Section */}
         <View style={styles.settingsSection}>
           <Text style={styles.sectionTitle}>Settings</Text>
           <TouchableOpacity style={styles.settingsButton} onPress={handleResetOnboarding}>
@@ -116,7 +112,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFDF9',
+    backgroundColor: Colors.background,
   },
   avatarSection: {
     alignItems: 'center',
@@ -127,7 +123,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.selectedCard,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -168,9 +164,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.textMuted,
   },
-  bookmarksList: {
-    paddingBottom: 20,
-  },
   settingsSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -192,7 +185,7 @@ const styles = StyleSheet.create({
   },
   bookmarkCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFDF9',
+    backgroundColor: Colors.background,
     borderRadius: 16,
     borderWidth: 2,
     borderColor: Colors.primaryBorder,
@@ -206,12 +199,12 @@ const styles = StyleSheet.create({
   bookmarkReference: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.primary,
+    color: Colors.text,
     marginBottom: 8,
   },
   bookmarkText: {
     fontSize: 15,
-    color: Colors.text,
+    color: Colors.textSecondary,
     lineHeight: 22,
   },
   removeButton: {

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { TouchableOpacity, Text, View, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Colors } from '../../constants/colors';
 
 interface OptionCardProps {
@@ -13,42 +14,57 @@ interface OptionCardProps {
 }
 
 export function OptionCard({ label, sublabel, icon, selected, onPress, index = 0 }: OptionCardProps) {
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const translateYAnim = useRef(new Animated.Value(14)).current;
   const selectedAnim = useRef(new Animated.Value(0)).current;
 
+  const handlePress = () => {
+    // Very subtle selection haptic
+    Haptics.selectionAsync();
+    onPress();
+  };
+
   useEffect(() => {
-    const delay = index * 60;
+    // Reset animations for clean replay on navigation
+    opacityAnim.setValue(0);
+    translateYAnim.setValue(14);
+    
+    // Staggered animation timing - calm and intentional
+    const initialDelay = 150; // Delay before first option
+    const staggerDelay = 100; // Delay between each option
+    const animationDuration = 350; // Duration per option
+    const delay = initialDelay + (index * staggerDelay);
+    
     Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 350,
-        delay,
-        easing: Easing.out(Easing.back(1.2)),
-        useNativeDriver: true,
-      }),
       Animated.timing(opacityAnim, {
         toValue: 1,
-        duration: 300,
+        duration: animationDuration,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateYAnim, {
+        toValue: 0,
+        duration: animationDuration,
         delay,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [index]);
 
   useEffect(() => {
-    Animated.spring(selectedAnim, {
+    Animated.timing(selectedAnim, {
       toValue: selected ? 1 : 0,
-      tension: 300,
-      friction: 20,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
   }, [selected]);
 
   const selectedScale = selectedAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.02],
+    outputRange: [1, 1.015],
   });
 
   return (
@@ -57,13 +73,13 @@ export function OptionCard({ label, sublabel, icon, selected, onPress, index = 0
         styles.wrapper,
         {
           opacity: opacityAnim,
-          transform: [{ scale: scaleAnim }, { scale: selectedScale }],
+          transform: [{ translateY: translateYAnim }, { scale: selectedScale }],
         },
       ]}
     >
       <TouchableOpacity
         style={[styles.card, selected && styles.cardSelected]}
-        onPress={onPress}
+        onPress={handlePress}
         activeOpacity={0.7}
       >
         {icon && (

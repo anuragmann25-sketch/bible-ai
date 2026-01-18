@@ -1,8 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
-import { useOnboarding, OnboardingData } from '../context/OnboardingContext';
-import { Colors } from '../constants/colors';
+import { useOnboarding } from '../context/OnboardingContext';
 import {
   OnboardingLayout,
   OptionCard,
@@ -12,327 +10,524 @@ import {
   DatePickerWheel,
 } from '../components/onboarding';
 
-const TOTAL_STEPS = 14;
-
-type StepConfig = {
-  title: string;
-  subtitle?: string;
-  type: 'single' | 'slider' | 'vision' | 'datepicker';
-  dataKey?: keyof OnboardingData;
-  options?: Array<{
-    value: string;
-    label: string;
-    sublabel?: string;
-    icon?: string;
-  }>;
-};
-
-const STEPS: StepConfig[] = [
-  // Step 1: Gender
-  {
-    title: 'What is your gender?',
-    subtitle: 'This helps us personalize your spiritual guidance.',
-    type: 'single',
-    dataKey: 'gender',
-    options: [
-      { value: 'male', label: 'Male', icon: 'man-outline' },
-      { value: 'female', label: 'Female', icon: 'woman-outline' },
-    ],
-  },
-  // Step 2: Birth Date
-  {
-    title: 'When were you born?',
-    subtitle: 'This helps us personalize your spiritual guidance.',
-    type: 'datepicker',
-    dataKey: 'birthDate',
-  },
-  // Step 3: Spiritual State
-  {
-    title: 'How would you describe your current spiritual state?',
-    subtitle: 'Be honest - there\'s no judgment here.',
-    type: 'single',
-    dataKey: 'spiritualState',
-    options: [
-      { value: 'lost', label: 'Lost', sublabel: 'Searching for direction', icon: 'compass-outline' },
-      { value: 'searching', label: 'Searching', sublabel: 'Exploring my faith', icon: 'search-outline' },
-      { value: 'returning', label: 'Returning', sublabel: 'Coming back to God', icon: 'return-up-forward-outline' },
-      { value: 'strong', label: 'Strong', sublabel: 'Growing deeper', icon: 'shield-checkmark-outline' },
-    ],
-  },
-  // Step 4: Prayer Frequency
-  {
-    title: 'How often do you pray or reflect?',
-    subtitle: 'Understanding your current habits helps us guide you.',
-    type: 'single',
-    dataKey: 'prayerFrequency',
-    options: [
-      { value: 'rarely', label: 'Rarely', sublabel: 'A few times a year', icon: 'time-outline' },
-      { value: 'sometimes', label: 'Sometimes', sublabel: 'A few times a month', icon: 'calendar-outline' },
-      { value: 'often', label: 'Often', sublabel: 'Several times a week', icon: 'repeat-outline' },
-      { value: 'daily', label: 'Daily', sublabel: 'Every day', icon: 'sunny-outline' },
-    ],
-  },
-  // Step 5: Biggest Struggle
-  {
-    title: 'What is your biggest current struggle?',
-    subtitle: 'We all face challenges. Let us help you overcome.',
-    type: 'single',
-    dataKey: 'biggestStruggle',
-    options: [
-      { value: 'temptation', label: 'Temptation', icon: 'flame-outline' },
-      { value: 'doubt', label: 'Doubt', icon: 'help-circle-outline' },
-      { value: 'fear', label: 'Fear', icon: 'warning-outline' },
-      { value: 'lust', label: 'Lust', icon: 'heart-dislike-outline' },
-      { value: 'anxiety', label: 'Anxiety', icon: 'pulse-outline' },
-      { value: 'loneliness', label: 'Loneliness', icon: 'person-outline' },
-    ],
-  },
-  // Step 6: Current Struggle Detail
-  {
-    title: 'What do you struggle with most right now?',
-    subtitle: 'Select the one that resonates most deeply.',
-    type: 'single',
-    dataKey: 'currentStruggle',
-    options: [
-      { value: 'anger', label: 'Anger', sublabel: 'Managing emotions', icon: 'thunderstorm-outline' },
-      { value: 'pride', label: 'Pride', sublabel: 'Humility struggles', icon: 'ribbon-outline' },
-      { value: 'laziness', label: 'Laziness', sublabel: 'Lack of motivation', icon: 'bed-outline' },
-      { value: 'envy', label: 'Envy', sublabel: 'Comparing to others', icon: 'eye-outline' },
-      { value: 'greed', label: 'Greed', sublabel: 'Material attachment', icon: 'cash-outline' },
-    ],
-  },
-  // Step 7: Feeling Distant
-  {
-    title: 'Do you feel distant from God sometimes?',
-    subtitle: 'It\'s okay to feel this way.',
-    type: 'single',
-    dataKey: 'feelsDistant',
-    options: [
-      { value: 'yes', label: 'Yes', sublabel: 'I often feel disconnected', icon: 'cloud-outline' },
-      { value: 'no', label: 'No', sublabel: 'I feel His presence', icon: 'sunny-outline' },
-    ],
-  },
-  // Step 8: Seeking
-  {
-    title: 'What are you seeking most?',
-    subtitle: 'What draws your heart right now?',
-    type: 'single',
-    dataKey: 'seeking',
-    options: [
-      { value: 'peace', label: 'Peace', sublabel: 'Calm in the storm', icon: 'leaf-outline' },
-      { value: 'discipline', label: 'Discipline', sublabel: 'Spiritual consistency', icon: 'fitness-outline' },
-      { value: 'faith', label: 'Faith', sublabel: 'Deeper belief', icon: 'sparkles-outline' },
-      { value: 'purpose', label: 'Purpose', sublabel: 'Direction in life', icon: 'compass-outline' },
-      { value: 'love', label: 'Love', sublabel: 'Connection with others', icon: 'heart-outline' },
-    ],
-  },
-  // Step 9: Temptation Strength (Slider)
-  {
-    title: 'How strong is temptation in your daily life?',
-    subtitle: 'Drag to indicate the intensity you experience.',
-    type: 'slider',
-    dataKey: 'temptationStrength',
-  },
-  // Step 10: Doubt Frequency
-  {
-    title: 'How often do doubts appear?',
-    subtitle: 'Doubt is part of the journey.',
-    type: 'single',
-    dataKey: 'doubtFrequency',
-    options: [
-      { value: 'low', label: 'Rarely', sublabel: 'Faith is steady', icon: 'shield-checkmark-outline' },
-      { value: 'medium', label: 'Sometimes', sublabel: 'Occasional questioning', icon: 'help-circle-outline' },
-      { value: 'high', label: 'Often', sublabel: 'Frequent struggles', icon: 'alert-circle-outline' },
-    ],
-  },
-  // Step 11: Motivation
-  {
-    title: 'What motivates you most?',
-    subtitle: 'What drives your spiritual growth?',
-    type: 'single',
-    dataKey: 'motivation',
-    options: [
-      { value: 'god', label: 'God', sublabel: 'His love and calling', icon: 'sparkles-outline' },
-      { value: 'destiny', label: 'Destiny', sublabel: 'Fulfilling my purpose', icon: 'rocket-outline' },
-      { value: 'love', label: 'Love', sublabel: 'For family and others', icon: 'heart-outline' },
-      { value: 'strength', label: 'Becoming Stronger', sublabel: 'Personal growth', icon: 'trending-up-outline' },
-    ],
-  },
-  // Step 12: Daily Guidance
-  {
-    title: 'Do you want daily spiritual guidance?',
-    subtitle: 'We can send you personalized devotionals.',
-    type: 'single',
-    dataKey: 'wantsDailyGuidance',
-    options: [
-      { value: 'yes', label: 'Yes, please', sublabel: 'Help me stay consistent', icon: 'notifications-outline' },
-      { value: 'no', label: 'Not right now', sublabel: 'I\'ll explore on my own', icon: 'close-circle-outline' },
-    ],
-  },
-  // Step 13: Guidance Style
-  {
-    title: 'Do you prefer gentle guidance or direct truth?',
-    subtitle: 'How should we speak to your heart?',
-    type: 'single',
-    dataKey: 'guidanceStyle',
-    options: [
-      { value: 'gentle', label: 'Gentle Guidance', sublabel: 'Encouraging and soft', icon: 'flower-outline' },
-      { value: 'direct', label: 'Direct Truth', sublabel: 'Clear and bold', icon: 'flash-outline' },
-    ],
-  },
-  // Step 14: Vision
-  {
-    title: 'Bible AI helps you grow consistently',
-    subtitle: 'Your spiritual journey is about progress, not perfection.',
-    type: 'vision',
-  },
-];
-
-// Calculate age from birth date
-function calculateAge(birthDate: Date): number {
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-}
+const TOTAL_STEPS = 13;
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { onboardingData, updateOnboardingData, completeOnboarding } = useOnboarding();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [showLoading, setShowLoading] = useState(false);
-  const [sliderValue, setSliderValue] = useState(0.5);
-  const [selectedBirthDate, setSelectedBirthDate] = useState<Date | null>(null);
+  const { updateOnboardingData, onboardingData, completeOnboarding } = useOnboarding();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [birthDate, setBirthDate] = useState<Date | null>(null);
 
-  const step = STEPS[currentStep];
-
-  const getCurrentValue = useCallback(() => {
-    if (!step.dataKey) return undefined;
-    
-    if (step.dataKey === 'temptationStrength') {
-      return sliderValue;
-    }
-    
-    if (step.dataKey === 'birthDate') {
-      return selectedBirthDate ? 'selected' : undefined;
-    }
-    
-    const value = onboardingData[step.dataKey];
-    if (step.dataKey === 'feelsDistant' || step.dataKey === 'wantsDailyGuidance') {
-      return value === true ? 'yes' : value === false ? 'no' : undefined;
-    }
-    return value as string | undefined;
-  }, [step, onboardingData, sliderValue, selectedBirthDate]);
-
-  const handleOptionSelect = useCallback((value: string) => {
-    if (!step.dataKey) return;
-    
-    if (step.dataKey === 'feelsDistant' || step.dataKey === 'wantsDailyGuidance') {
-      updateOnboardingData(step.dataKey, value === 'yes');
+  const handleNext = () => {
+    if (currentStep < TOTAL_STEPS) {
+      setCurrentStep(currentStep + 1);
     } else {
-      updateOnboardingData(step.dataKey, value as any);
+      setIsLoading(true);
     }
-  }, [step, updateOnboardingData]);
+  };
 
-  const handleSliderChange = useCallback((value: number) => {
-    setSliderValue(value);
-    if (step.dataKey === 'temptationStrength') {
-      updateOnboardingData('temptationStrength', value);
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
     }
-  }, [step, updateOnboardingData]);
+  };
 
-  const handleDateChange = useCallback((date: Date) => {
-    // Only update if the date is different to prevent unnecessary rerenders
-    setSelectedBirthDate((prev) => {
-      if (prev && prev.getTime() === date.getTime()) {
-        return prev;
-      }
-      return date;
-    });
-    const age = calculateAge(date);
-    updateOnboardingData('birthDate', date.toISOString());
-    updateOnboardingData('age', age);
-  }, [updateOnboardingData]);
-
-  const handleNext = useCallback(() => {
-    if (currentStep < TOTAL_STEPS - 1) {
-      setCurrentStep(prev => prev + 1);
-    } else {
-      // Show loading screen
-      setShowLoading(true);
-    }
-  }, [currentStep]);
-
-  const handleBack = useCallback(() => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  }, [currentStep]);
-
-  const handleLoadingComplete = useCallback(async () => {
+  const handleLoadingComplete = async () => {
     await completeOnboarding();
     router.replace('/(tabs)');
-  }, [completeOnboarding, router]);
+  };
 
-  if (showLoading) {
+  const handleDateChange = (date: Date) => {
+    setBirthDate(date);
+    const today = new Date();
+    const age = today.getFullYear() - date.getFullYear();
+    const monthDiff = today.getMonth() - date.getMonth();
+    const adjustedAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())
+      ? age - 1
+      : age;
+    
+    updateOnboardingData('birthDate', date.toISOString());
+    updateOnboardingData('age', adjustedAge);
+  };
+
+  const isNextDisabled = useMemo(() => {
+    switch (currentStep) {
+      case 1: return !onboardingData.gender;
+      case 2: return !birthDate;
+      case 3: return !onboardingData.spiritualState;
+      case 4: return !onboardingData.prayerFrequency;
+      case 5: return onboardingData.temptationStrength === undefined;
+      case 6: return !onboardingData.biggestStruggle;
+      case 7: return !onboardingData.currentStruggle;
+      case 8: return onboardingData.feelsDistant === undefined;
+      case 9: return !onboardingData.seeking;
+      case 10: return !onboardingData.doubtFrequency;
+      case 11: return false;
+      case 12: return !onboardingData.motivation;
+      case 13: return !onboardingData.guidanceStyle;
+      default: return false;
+    }
+  }, [currentStep, onboardingData, birthDate]);
+
+  if (isLoading) {
     return <LoadingScreen onComplete={handleLoadingComplete} />;
   }
 
-  const currentValue = getCurrentValue();
-  const isNextDisabled = (step.type === 'single' && !currentValue) || 
-                         (step.type === 'datepicker' && !selectedBirthDate);
-
-  return (
-    <OnboardingLayout
-      currentStep={currentStep + 1}
-      totalSteps={TOTAL_STEPS}
-      title={step.title}
-      subtitle={step.subtitle}
-      onBack={currentStep > 0 ? handleBack : undefined}
-      onNext={handleNext}
-      nextDisabled={isNextDisabled}
-      nextLabel={currentStep === TOTAL_STEPS - 1 ? 'Get Started' : 'Continue'}
-      showBackButton={currentStep > 0}
-    >
-      {step.type === 'single' && step.options && (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.optionsScroll}>
-          {step.options.map((option, index) => (
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="What is your gender?"
+            subtitle="This helps personalize your spiritual journey"
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+            showBackButton={false}
+          >
             <OptionCard
-              key={option.value}
-              label={option.label}
-              sublabel={option.sublabel}
-              icon={option.icon as any}
-              selected={currentValue === option.value}
-              onPress={() => handleOptionSelect(option.value)}
-              index={index}
+              label="Male"
+              icon="man-outline"
+              selected={onboardingData.gender === 'male'}
+              onPress={() => updateOnboardingData('gender', 'male')}
+              index={0}
             />
-          ))}
-        </ScrollView>
-      )}
+            <OptionCard
+              label="Female"
+              icon="woman-outline"
+              selected={onboardingData.gender === 'female'}
+              onPress={() => updateOnboardingData('gender', 'female')}
+              index={1}
+            />
+          </OnboardingLayout>
+        );
 
-      {step.type === 'slider' && (
-        <SliderOption
-          value={sliderValue}
-          onValueChange={handleSliderChange}
-          minLabel="Manageable"
-          maxLabel="Overwhelming"
-        />
-      )}
+      case 2:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="When were you born?"
+            subtitle="We use this to personalize your experience"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <DatePickerWheel
+              onDateChange={handleDateChange}
+              initialDate={birthDate || undefined}
+            />
+          </OnboardingLayout>
+        );
 
-      {step.type === 'datepicker' && (
-        <DatePickerWheel onDateChange={handleDateChange} />
-      )}
+      case 3:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="Where are you spiritually right now?"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <OptionCard
+              label="Lost"
+              sublabel="Feeling disconnected from faith"
+              icon="help-circle-outline"
+              selected={onboardingData.spiritualState === 'lost'}
+              onPress={() => updateOnboardingData('spiritualState', 'lost')}
+              index={0}
+            />
+            <OptionCard
+              label="Searching"
+              sublabel="Looking for deeper meaning"
+              icon="search-outline"
+              selected={onboardingData.spiritualState === 'searching'}
+              onPress={() => updateOnboardingData('spiritualState', 'searching')}
+              index={1}
+            />
+            <OptionCard
+              label="Strong"
+              sublabel="Confident in my faith"
+              icon="shield-checkmark-outline"
+              selected={onboardingData.spiritualState === 'strong'}
+              onPress={() => updateOnboardingData('spiritualState', 'strong')}
+              index={2}
+            />
+            <OptionCard
+              label="Returning"
+              sublabel="Coming back after time away"
+              icon="return-down-back-outline"
+              selected={onboardingData.spiritualState === 'returning'}
+              onPress={() => updateOnboardingData('spiritualState', 'returning')}
+              index={3}
+            />
+          </OnboardingLayout>
+        );
 
-      {step.type === 'vision' && <VisionChart />}
-    </OnboardingLayout>
-  );
+      case 4:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="How often do you pray?"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <OptionCard
+              label="Daily"
+              sublabel="A consistent daily rhythm"
+              icon="sunny-outline"
+              selected={onboardingData.prayerFrequency === 'daily'}
+              onPress={() => updateOnboardingData('prayerFrequency', 'daily')}
+              index={0}
+            />
+            <OptionCard
+              label="Weekly"
+              sublabel="A regular but flexible practice"
+              icon="calendar-outline"
+              selected={onboardingData.prayerFrequency === 'weekly'}
+              onPress={() => updateOnboardingData('prayerFrequency', 'weekly')}
+              index={1}
+            />
+            <OptionCard
+              label="Sometimes"
+              sublabel="Faith fits where it can"
+              icon="time-outline"
+              selected={onboardingData.prayerFrequency === 'sometimes'}
+              onPress={() => updateOnboardingData('prayerFrequency', 'sometimes')}
+              index={2}
+            />
+            <OptionCard
+              label="Rarely"
+              sublabel="Faith is present but irregular"
+              icon="moon-outline"
+              selected={onboardingData.prayerFrequency === 'rarely'}
+              onPress={() => updateOnboardingData('prayerFrequency', 'rarely')}
+              index={3}
+            />
+          </OnboardingLayout>
+        );
+
+      case 5:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="How strong is temptation in your life?"
+            subtitle={"Temptation is part of being human.\nThis helps us understand where you need strength and grace."}
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <SliderOption
+              value={onboardingData.temptationStrength ?? 0.5}
+              onValueChange={(value) => updateOnboardingData('temptationStrength', value)}
+              minLabel="Weak"
+              maxLabel="Strong"
+            />
+          </OnboardingLayout>
+        );
+
+      case 6:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="What's your biggest spiritual struggle?"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <OptionCard
+              label="Fear & Anxiety"
+              sublabel="Worry weighs heavily on my heart"
+              icon="alert-circle-outline"
+              selected={onboardingData.biggestStruggle === 'fear'}
+              onPress={() => updateOnboardingData('biggestStruggle', 'fear')}
+              index={0}
+            />
+            <OptionCard
+              label="Doubt"
+              sublabel="Questions about faith and belief"
+              icon="help-outline"
+              selected={onboardingData.biggestStruggle === 'doubt'}
+              onPress={() => updateOnboardingData('biggestStruggle', 'doubt')}
+              index={1}
+            />
+            <OptionCard
+              label="Purpose"
+              sublabel="Searching for meaning and direction"
+              icon="compass-outline"
+              selected={onboardingData.biggestStruggle === 'purpose'}
+              onPress={() => updateOnboardingData('biggestStruggle', 'purpose')}
+              index={2}
+            />
+            <OptionCard
+              label="Temptation"
+              sublabel="Fighting desires that pull me away"
+              icon="flame-outline"
+              selected={onboardingData.biggestStruggle === 'temptation'}
+              onPress={() => updateOnboardingData('biggestStruggle', 'temptation')}
+              index={3}
+            />
+          </OnboardingLayout>
+        );
+
+      case 7:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="What are you struggling with right now?"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <OptionCard
+              label="Relationships"
+              sublabel="Connection with loved ones"
+              icon="heart-outline"
+              selected={onboardingData.currentStruggle === 'relationships'}
+              onPress={() => updateOnboardingData('currentStruggle', 'relationships')}
+              index={0}
+            />
+            <OptionCard
+              label="Career & Work"
+              sublabel="Finding purpose in my work"
+              icon="briefcase-outline"
+              selected={onboardingData.currentStruggle === 'career'}
+              onPress={() => updateOnboardingData('currentStruggle', 'career')}
+              index={1}
+            />
+            <OptionCard
+              label="Health"
+              sublabel="Physical or mental wellbeing"
+              icon="fitness-outline"
+              selected={onboardingData.currentStruggle === 'health'}
+              onPress={() => updateOnboardingData('currentStruggle', 'health')}
+              index={2}
+            />
+            <OptionCard
+              label="Personal Growth"
+              sublabel="Becoming a better person"
+              icon="trending-up-outline"
+              selected={onboardingData.currentStruggle === 'growth'}
+              onPress={() => updateOnboardingData('currentStruggle', 'growth')}
+              index={3}
+            />
+          </OnboardingLayout>
+        );
+
+      case 8:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="Do you sometimes feel distant from God?"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <OptionCard
+              label="Yes, often"
+              sublabel="I struggle to feel His presence"
+              icon="cloudy-outline"
+              selected={onboardingData.feelsDistant === true}
+              onPress={() => updateOnboardingData('feelsDistant', true)}
+              index={0}
+            />
+            <OptionCard
+              label="No, I feel close"
+              sublabel="I sense His guidance often"
+              icon="sunny-outline"
+              selected={onboardingData.feelsDistant === false}
+              onPress={() => updateOnboardingData('feelsDistant', false)}
+              index={1}
+            />
+          </OnboardingLayout>
+        );
+
+      case 9:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="What are you seeking most?"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <OptionCard
+              label="Peace"
+              sublabel="Calm in the midst of chaos"
+              icon="leaf-outline"
+              selected={onboardingData.seeking === 'peace'}
+              onPress={() => updateOnboardingData('seeking', 'peace')}
+              index={0}
+            />
+            <OptionCard
+              label="Strength"
+              sublabel="Power to face life's challenges"
+              icon="barbell-outline"
+              selected={onboardingData.seeking === 'strength'}
+              onPress={() => updateOnboardingData('seeking', 'strength')}
+              index={1}
+            />
+            <OptionCard
+              label="Guidance"
+              sublabel="Clarity for the path ahead"
+              icon="navigate-outline"
+              selected={onboardingData.seeking === 'guidance'}
+              onPress={() => updateOnboardingData('seeking', 'guidance')}
+              index={2}
+            />
+            <OptionCard
+              label="Connection"
+              sublabel="Deeper bond with God and others"
+              icon="people-outline"
+              selected={onboardingData.seeking === 'connection'}
+              onPress={() => updateOnboardingData('seeking', 'connection')}
+              index={3}
+            />
+          </OnboardingLayout>
+        );
+
+      case 10:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="How often do you experience doubt?"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <OptionCard
+              label="Rarely"
+              sublabel="Faith is steady"
+              icon="shield-outline"
+              selected={onboardingData.doubtFrequency === 'low'}
+              onPress={() => updateOnboardingData('doubtFrequency', 'low')}
+              index={0}
+            />
+            <OptionCard
+              label="Sometimes"
+              sublabel="Questions arise occasionally"
+              icon="help-circle-outline"
+              selected={onboardingData.doubtFrequency === 'medium'}
+              onPress={() => updateOnboardingData('doubtFrequency', 'medium')}
+              index={1}
+            />
+            <OptionCard
+              label="Often"
+              sublabel="Wrestling with faith regularly"
+              icon="thunderstorm-outline"
+              selected={onboardingData.doubtFrequency === 'high'}
+              onPress={() => updateOnboardingData('doubtFrequency', 'high')}
+              index={2}
+            />
+          </OnboardingLayout>
+        );
+
+      case 11:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="Your spiritual growth over time"
+            subtitle="Here's what consistent practice can do"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextLabel="I'm Ready"
+          >
+            <VisionChart />
+          </OnboardingLayout>
+        );
+
+      case 12:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="What motivates you most?"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+          >
+            <OptionCard
+              label="Personal transformation"
+              sublabel="Becoming the best version of myself"
+              icon="sparkles-outline"
+              selected={onboardingData.motivation === 'transformation'}
+              onPress={() => updateOnboardingData('motivation', 'transformation')}
+              index={0}
+            />
+            <OptionCard
+              label="Deeper relationship with God"
+              sublabel="Growing closer to the Creator"
+              icon="heart-outline"
+              selected={onboardingData.motivation === 'relationship'}
+              onPress={() => updateOnboardingData('motivation', 'relationship')}
+              index={1}
+            />
+            <OptionCard
+              label="Overcoming challenges"
+              sublabel="Rising above life's obstacles"
+              icon="trophy-outline"
+              selected={onboardingData.motivation === 'challenges'}
+              onPress={() => updateOnboardingData('motivation', 'challenges')}
+              index={2}
+            />
+            <OptionCard
+              label="Finding peace"
+              sublabel="Inner stillness and contentment"
+              icon="water-outline"
+              selected={onboardingData.motivation === 'peace'}
+              onPress={() => updateOnboardingData('motivation', 'peace')}
+              index={3}
+            />
+          </OnboardingLayout>
+        );
+
+      case 13:
+        return (
+          <OnboardingLayout
+            currentStep={currentStep}
+            totalSteps={TOTAL_STEPS}
+            title="How would you like guidance?"
+            subtitle="Choose what resonates with you"
+            onBack={handleBack}
+            onNext={handleNext}
+            nextDisabled={isNextDisabled}
+            nextLabel="Begin Journey"
+          >
+            <OptionCard
+              label="Gentle & encouraging"
+              sublabel="Soft reminders and warm guidance"
+              icon="heart-circle-outline"
+              selected={onboardingData.guidanceStyle === 'gentle'}
+              onPress={() => updateOnboardingData('guidanceStyle', 'gentle')}
+              index={0}
+            />
+            <OptionCard
+              label="Direct & clear"
+              sublabel="Straightforward wisdom and truth"
+              icon="flash-outline"
+              selected={onboardingData.guidanceStyle === 'direct'}
+              onPress={() => updateOnboardingData('guidanceStyle', 'direct')}
+              index={1}
+            />
+          </OnboardingLayout>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return renderStep();
 }
-
-const styles = StyleSheet.create({
-  optionsScroll: {
-    paddingBottom: 20,
-  },
-});

@@ -13,7 +13,6 @@ export interface BibleVerse {
 }
 
 export const BIBLE_BOOKS: BibleBook[] = [
-  // Old Testament (39 books)
   { name: 'Genesis', testament: 'Old Testament', chapters: 50, abbreviation: 'Gen' },
   { name: 'Exodus', testament: 'Old Testament', chapters: 40, abbreviation: 'Exod' },
   { name: 'Leviticus', testament: 'Old Testament', chapters: 27, abbreviation: 'Lev' },
@@ -53,7 +52,6 @@ export const BIBLE_BOOKS: BibleBook[] = [
   { name: 'Haggai', testament: 'Old Testament', chapters: 2, abbreviation: 'Hag' },
   { name: 'Zechariah', testament: 'Old Testament', chapters: 14, abbreviation: 'Zech' },
   { name: 'Malachi', testament: 'Old Testament', chapters: 4, abbreviation: 'Mal' },
-  // New Testament (27 books)
   { name: 'Matthew', testament: 'New Testament', chapters: 28, abbreviation: 'Matt' },
   { name: 'Mark', testament: 'New Testament', chapters: 16, abbreviation: 'Mark' },
   { name: 'Luke', testament: 'New Testament', chapters: 24, abbreviation: 'Luke' },
@@ -102,18 +100,49 @@ export function parseVerseId(id: string): { book: string; chapter: number; verse
   return { book, chapter, verse };
 }
 
-// Featured verses for home screen
+// Featured short verses for home screen
 export const FEATURED_VERSES: BibleVerse[] = [
-  { book: 'John', chapter: 3, verse: 16, text: 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.' },
+  { book: 'Psalms', chapter: 23, verse: 1, text: 'The LORD is my shepherd; I shall not want.' },
+  { book: 'Psalms', chapter: 46, verse: 10, text: 'Be still, and know that I am God.' },
+  { book: 'Psalms', chapter: 27, verse: 1, text: 'The LORD is my light and my salvation; whom shall I fear?' },
+  { book: 'Psalms', chapter: 118, verse: 24, text: 'This is the day which the LORD hath made; we will rejoice and be glad in it.' },
+  { book: 'Psalms', chapter: 34, verse: 8, text: 'O taste and see that the LORD is good.' },
+  { book: 'Psalms', chapter: 119, verse: 105, text: 'Thy word is a lamp unto my feet, and a light unto my path.' },
+  { book: 'Psalms', chapter: 37, verse: 4, text: 'Delight thyself also in the LORD; and he shall give thee the desires of thine heart.' },
+  { book: 'Psalms', chapter: 56, verse: 3, text: 'What time I am afraid, I will trust in thee.' },
+  { book: 'Psalms', chapter: 139, verse: 14, text: 'I am fearfully and wonderfully made.' },
+  { book: 'Psalms', chapter: 16, verse: 8, text: 'I have set the LORD always before me.' },
+  { book: 'Proverbs', chapter: 3, verse: 5, text: 'Trust in the LORD with all thine heart.' },
+  { book: 'Proverbs', chapter: 16, verse: 3, text: 'Commit thy works unto the LORD, and thy thoughts shall be established.' },
+  { book: 'Proverbs', chapter: 18, verse: 10, text: 'The name of the LORD is a strong tower: the righteous runneth into it, and is safe.' },
+  { book: 'Proverbs', chapter: 3, verse: 6, text: 'In all thy ways acknowledge him, and he shall direct thy paths.' },
+  { book: 'Isaiah', chapter: 40, verse: 31, text: 'They that wait upon the LORD shall renew their strength.' },
+  { book: 'Isaiah', chapter: 41, verse: 10, text: 'Fear thou not; for I am with thee.' },
+  { book: 'Isaiah', chapter: 26, verse: 3, text: 'Thou wilt keep him in perfect peace, whose mind is stayed on thee.' },
+  { book: 'Matthew', chapter: 11, verse: 28, text: 'Come unto me, all ye that labour, and I will give you rest.' },
+  { book: 'Matthew', chapter: 6, verse: 33, text: 'Seek ye first the kingdom of God, and his righteousness.' },
+  { book: 'Matthew', chapter: 5, verse: 14, text: 'Ye are the light of the world.' },
+  { book: 'John', chapter: 14, verse: 27, text: 'Peace I leave with you, my peace I give unto you.' },
+  { book: 'John', chapter: 8, verse: 12, text: 'I am the light of the world.' },
+  { book: 'John', chapter: 14, verse: 6, text: 'I am the way, the truth, and the life.' },
+  { book: 'John', chapter: 16, verse: 33, text: 'Be of good cheer; I have overcome the world.' },
+  { book: 'John', chapter: 8, verse: 32, text: 'The truth shall make you free.' },
+  { book: 'Romans', chapter: 8, verse: 28, text: 'All things work together for good to them that love God.' },
+  { book: 'Romans', chapter: 8, verse: 31, text: 'If God be for us, who can be against us?' },
   { book: 'Philippians', chapter: 4, verse: 13, text: 'I can do all things through Christ which strengtheneth me.' },
-  { book: 'Jeremiah', chapter: 29, verse: 11, text: 'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.' },
-  { book: 'Proverbs', chapter: 3, verse: 5, text: 'Trust in the LORD with all thine heart; and lean not unto thine own understanding.' },
-  { book: 'Isaiah', chapter: 41, verse: 10, text: 'Fear thou not; for I am with thee: be not dismayed; for I am thy God: I will strengthen thee; yea, I will help thee; yea, I will uphold thee with the right hand of my righteousness.' },
-  { book: 'Romans', chapter: 8, verse: 28, text: 'And we know that all things work together for good to them that love God, to them who are the called according to his purpose.' },
-  { book: 'Psalm', chapter: 23, verse: 1, text: 'The LORD is my shepherd; I shall not want.' },
-  { book: 'Matthew', chapter: 11, verse: 28, text: 'Come unto me, all ye that labour and are heavy laden, and I will give you rest.' },
-  { book: 'Joshua', chapter: 1, verse: 9, text: 'Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest.' },
-  { book: 'Psalm', chapter: 46, verse: 10, text: 'Be still, and know that I am God: I will be exalted among the heathen, I will be exalted in the earth.' },
-  { book: 'John', chapter: 14, verse: 6, text: 'Jesus saith unto him, I am the way, the truth, and the life: no man cometh unto the Father, but by me.' },
-  { book: 'Romans', chapter: 12, verse: 2, text: 'And be not conformed to this world: but be ye transformed by the renewing of your mind, that ye may prove what is that good, and acceptable, and perfect, will of God.' },
+  { book: 'Philippians', chapter: 4, verse: 7, text: 'The peace of God shall keep your hearts and minds.' },
+  { book: 'Philippians', chapter: 4, verse: 4, text: 'Rejoice in the Lord always: and again I say, Rejoice.' },
+  { book: 'Hebrews', chapter: 11, verse: 1, text: 'Faith is the substance of things hoped for.' },
+  { book: 'Hebrews', chapter: 13, verse: 5, text: 'I will never leave thee, nor forsake thee.' },
+  { book: 'James', chapter: 1, verse: 5, text: 'If any of you lack wisdom, let him ask of God.' },
+  { book: '1 Peter', chapter: 5, verse: 7, text: 'Casting all your care upon him; for he careth for you.' },
+  { book: '1 John', chapter: 4, verse: 8, text: 'God is love.' },
+  { book: '1 John', chapter: 4, verse: 18, text: 'Perfect love casteth out fear.' },
+  { book: '2 Corinthians', chapter: 5, verse: 7, text: 'We walk by faith, not by sight.' },
+  { book: '2 Corinthians', chapter: 12, verse: 9, text: 'My grace is sufficient for thee.' },
+  { book: 'Galatians', chapter: 5, verse: 22, text: 'The fruit of the Spirit is love, joy, peace.' },
+  { book: 'Jeremiah', chapter: 29, verse: 11, text: 'I know the plans I have for you, saith the LORD, plans for peace.' },
+  { book: 'Lamentations', chapter: 3, verse: 23, text: 'Great is thy faithfulness.' },
+  { book: 'Joshua', chapter: 1, verse: 9, text: 'Be strong and of a good courage.' },
+  { book: 'Micah', chapter: 6, verse: 8, text: 'Walk humbly with thy God.' },
 ];

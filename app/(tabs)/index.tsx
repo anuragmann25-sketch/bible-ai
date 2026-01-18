@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,72 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../constants/colors';
 import { FEATURED_VERSES, getVerseReference } from '../../data/bibleData';
 
 const { height } = Dimensions.get('window');
+const RECENT_VERSES_KEY = 'recentVerseIndices';
+const MAX_RECENT = 30;
+
+function shuffleArray<T>(array: T[]): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 export default function HomeScreen() {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => Math.floor(Math.random() * FEATURED_VERSES.length));
+  const [recentIndices, setRecentIndices] = useState<number[]>([]);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const isInitialized = useRef(false);
 
-  const currentVerse = FEATURED_VERSES[currentIndex];
+  useEffect(() => {
+    const loadRecent = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(RECENT_VERSES_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setRecentIndices(parsed);
+            const availableIndices = FEATURED_VERSES.map((_, i) => i).filter(i => !parsed.includes(i));
+            if (availableIndices.length > 0) {
+              const shuffled = shuffleArray(availableIndices);
+              setCurrentIndex(shuffled[0]);
+            }
+          }
+        }
+        isInitialized.current = true;
+      } catch {
+        isInitialized.current = true;
+      }
+    };
+    loadRecent();
+  }, []);
+
+  useEffect(() => {
+    if (isInitialized.current && recentIndices.length > 0) {
+      AsyncStorage.setItem(RECENT_VERSES_KEY, JSON.stringify(recentIndices)).catch(() => {});
+    }
+  }, [recentIndices]);
+
+  const getNextIndex = useCallback(() => {
+    const availableIndices = FEATURED_VERSES.map((_, i) => i).filter(i => !recentIndices.includes(i));
+    
+    if (availableIndices.length === 0) {
+      const keepRecent = recentIndices.slice(-5);
+      setRecentIndices(keepRecent);
+      const newAvailable = FEATURED_VERSES.map((_, i) => i).filter(i => !keepRecent.includes(i));
+      const shuffled = shuffleArray(newAvailable);
+      return shuffled[0] ?? 0;
+    }
+    
+    const shuffled = shuffleArray(availableIndices);
+    return shuffled[0];
+  }, [recentIndices]);
 
   const handleTap = useCallback(() => {
     Animated.timing(fadeAnim, {
@@ -24,19 +80,27 @@ export default function HomeScreen() {
       duration: 200,
       useNativeDriver: true,
     }).start(() => {
-      setCurrentIndex((prev) => (prev + 1) % FEATURED_VERSES.length);
+      const nextIndex = getNextIndex();
+      setCurrentIndex(nextIndex);
+      
+      setRecentIndices(prev => {
+        const updated = [...prev, nextIndex];
+        return updated.slice(-MAX_RECENT);
+      });
+      
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 300,
         useNativeDriver: true,
       }).start();
     });
-  }, [fadeAnim]);
+  }, [fadeAnim, getNextIndex]);
+
+  const currentVerse = FEATURED_VERSES[currentIndex];
 
   return (
     <TouchableWithoutFeedback onPress={handleTap}>
       <View style={styles.container}>
-        {/* Cross - Fixed position */}
         <View style={styles.crossContainer} pointerEvents="none">
           <View style={styles.cross}>
             <View style={styles.crossVertical} />
@@ -44,7 +108,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Verse content - Animated */}
         <View style={styles.contentContainer}>
           <Animated.View style={[styles.verseContainer, { opacity: fadeAnim }]}>
             <Text style={styles.verseText}>"{currentVerse.text}"</Text>
@@ -61,11 +124,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFDF9',
+    backgroundColor: Colors.background,
   },
   crossContainer: {
     position: 'absolute',
-    top: height * 0.20,
+    top: height * 0.25,
     left: 0,
     right: 0,
     height: height * 0.25,
@@ -82,20 +145,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 14,
     height: 135,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.black,
     borderRadius: 7,
   },
   crossHorizontal: {
     position: 'absolute',
     width: 74,
     height: 14,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.black,
     borderRadius: 7,
     top: 26,
   },
   contentContainer: {
     position: 'absolute',
-    top: height * 0.50,
+    top: height * 0.53,
     left: 0,
     right: 0,
     bottom: 120,
@@ -106,18 +169,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   verseText: {
-    fontSize: 24,
-    color: '#3D4856',
+    fontSize: 20,
+    color: Colors.text,
     textAlign: 'center',
-    lineHeight: 38,
+    lineHeight: 32,
     fontWeight: '400',
     letterSpacing: -0.3,
   },
   verseReference: {
-    fontFamily: 'System',
     fontSize: 18,
-    color: '#D4922A',
+    color: Colors.textSecondary,
     marginTop: 40,
-    fontWeight: '400',
+    fontWeight: '500',
   },
 });

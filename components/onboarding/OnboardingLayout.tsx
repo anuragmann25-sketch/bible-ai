@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Colors } from '../../constants/colors';
 import { ProgressBar } from './ProgressBar';
 
@@ -43,6 +44,14 @@ export function OnboardingLayout({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  const handleNext = () => {
+    if (!nextDisabled) {
+      // Subtle haptic on primary button press
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onNext();
+    }
+  };
+
   useEffect(() => {
     fadeAnim.setValue(0);
     slideAnim.setValue(30);
@@ -65,7 +74,6 @@ export function OnboardingLayout({
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* Header */}
       <View style={styles.header}>
         {showBackButton && onBack ? (
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
@@ -77,7 +85,6 @@ export function OnboardingLayout({
         <ProgressBar currentStep={currentStep} totalSteps={totalSteps} />
       </View>
 
-      {/* Content */}
       <Animated.View
         style={[
           styles.content,
@@ -92,11 +99,10 @@ export function OnboardingLayout({
         <View style={styles.optionsContainer}>{children}</View>
       </Animated.View>
 
-      {/* Bottom CTA */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.nextButton, nextDisabled && styles.nextButtonDisabled]}
-          onPress={onNext}
+          onPress={handleNext}
           disabled={nextDisabled}
           activeOpacity={0.8}
         >

@@ -29,19 +29,11 @@ type ViewState =
   | { type: 'chapters'; book: BibleBook }
   | { type: 'verses'; book: BibleBook; chapter: number; highlightVerse?: number };
 
-// Book preview texts
 const BOOK_PREVIEWS: Record<string, string> = {
   'Genesis': 'In the beginning God created the heavens and the earth...',
   'Exodus': 'These are the names of the sons of Israel who went to Egypt...',
-  'Leviticus': 'The Lord called to Moses and spoke to him...',
-  'Numbers': 'The Lord spoke to Moses in the tent of meeting...',
-  'Deuteronomy': 'These are the words Moses spoke to all Israel...',
   'Matthew': 'This is the genealogy of Jesus the Messiah...',
-  'Mark': 'The beginning of the good news about Jesus...',
-  'Luke': 'Many have undertaken to draw up an account...',
   'John': 'In the beginning was the Word, and the Word was with God...',
-  'Acts': 'In my former book, Theophilus, I wrote about all that Jesus began...',
-  'Romans': 'Paul, a servant of Christ Jesus, called to be an apostle...',
   'Psalms': 'Blessed is the one who does not walk in step with the wicked...',
   'Proverbs': 'The proverbs of Solomon son of David, king of Israel...',
 };
@@ -64,7 +56,7 @@ function BookCard({ book, onPress, index }: { book: BibleBook; onPress: () => vo
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
       <TouchableOpacity style={styles.bookCard} onPress={onPress} activeOpacity={0.7}>
         <View style={styles.bookIconContainer}>
-          <Ionicons name="book-outline" size={28} color={Colors.primary} />
+          <Ionicons name="book-outline" size={28} color={Colors.text} />
         </View>
         <View style={styles.bookInfo}>
           <View style={styles.bookHeader}>
@@ -118,7 +110,6 @@ function VerseCard({ verse, index, isHighlighted }: { verse: BibleVerse; index: 
   useEffect(() => {
     if (isHighlighted) {
       setShowHighlight(true);
-      // Remove highlight after delay
       const timer = setTimeout(() => {
         setShowHighlight(false);
       }, 2000);
@@ -137,7 +128,7 @@ function VerseCard({ verse, index, isHighlighted }: { verse: BibleVerse; index: 
       </View>
       <Text style={styles.verseText}>{verse.text}</Text>
       <TouchableOpacity style={styles.bookmarkButton} onPress={() => toggleBookmark(verse)}>
-        <Ionicons name={bookmarked ? 'bookmark' : 'bookmark-outline'} size={22} color={bookmarked ? Colors.primary : Colors.textMuted} />
+        <Ionicons name={bookmarked ? 'bookmark' : 'bookmark-outline'} size={22} color={bookmarked ? Colors.text : Colors.textMuted} />
       </TouchableOpacity>
     </Animated.View>
   );
@@ -189,7 +180,7 @@ function BooksListScreen({ filter, searchQuery, setSearchQuery, setFilter, onSel
           </View>
         </View>
         <View style={styles.filterContainer}>
-          <FilterButton label="All Books" active={filter === 'all'} onPress={() => setFilter('all')} />
+          <FilterButton label="All" active={filter === 'all'} onPress={() => setFilter('all')} />
           <FilterButton label="Old Testament" active={filter === 'old'} onPress={() => setFilter('old')} />
           <FilterButton label="New Testament" active={filter === 'new'} onPress={() => setFilter('new')} />
         </View>
@@ -223,7 +214,7 @@ function ChaptersGridScreen({ book, onBack, onSelectChapter }: { book: BibleBook
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.chapterHeader}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Ionicons name="chevron-back" size={26} color={Colors.primary} />
+          <Ionicons name="chevron-back" size={26} color={Colors.text} />
           <Text style={styles.backText}>Books</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{book.name}</Text>
@@ -244,7 +235,6 @@ function VersesListScreen({ book, chapter, onBack, highlightVerse }: { book: Bib
     if (chapterData) setVerses(chapterData.verses);
   }, [book.name, chapter]);
 
-  // Scroll to highlighted verse when verses are loaded
   useEffect(() => {
     if (highlightVerse && verses.length > 0 && flatListRef.current) {
       const verseIndex = verses.findIndex((v) => v.verse === highlightVerse);
@@ -270,7 +260,7 @@ function VersesListScreen({ book, chapter, onBack, highlightVerse }: { book: Bib
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.chapterHeader}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Ionicons name="chevron-back" size={26} color={Colors.primary} />
+          <Ionicons name="chevron-back" size={26} color={Colors.text} />
           <Text style={styles.backText}>{book.name}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chapter {chapter}</Text>
@@ -296,7 +286,6 @@ export default function BibleScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [processedParams, setProcessedParams] = useState(false);
 
-  // Handle deep link params from bookmarks
   useEffect(() => {
     if (params.book && params.chapter && !processedParams) {
       const bookName = params.book;
@@ -316,7 +305,6 @@ export default function BibleScreen() {
     }
   }, [params.book, params.chapter, params.verse, processedParams]);
 
-  // Reset processedParams when params change (new navigation)
   useEffect(() => {
     if (params.book && params.chapter) {
       setProcessedParams(false);
@@ -348,25 +336,26 @@ export default function BibleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFDF9',
+    backgroundColor: Colors.background,
   },
   listHeader: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 16,
-    backgroundColor: '#FFFDF9',
+    backgroundColor: Colors.background,
   },
   chapterHeader: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 16,
-    backgroundColor: '#FFFDF9',
+    backgroundColor: Colors.background,
   },
   headerTitle: {
     fontSize: 32,
     fontWeight: '700',
     color: Colors.text,
     marginBottom: 20,
+    letterSpacing: -0.8,
   },
   headerSubtitle: {
     fontSize: 16,
@@ -381,7 +370,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 18,
-    color: Colors.primary,
+    color: Colors.text,
     fontWeight: '500',
   },
   searchContainer: {
@@ -390,10 +379,8 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFDF9',
+    backgroundColor: Colors.unselectedCard,
     borderRadius: 16,
-    borderWidth: 2,
-    borderColor: Colors.primaryBorder,
     paddingHorizontal: 16,
     height: 52,
     gap: 12,
@@ -411,18 +398,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: Colors.primaryLight,
-    borderWidth: 2,
-    borderColor: Colors.primaryBorder,
+    backgroundColor: Colors.unselectedCard,
   },
   filterButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.selectedCard,
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.primary,
+    color: Colors.text,
   },
   filterButtonTextActive: {
     color: Colors.white,
@@ -446,8 +430,8 @@ const styles = StyleSheet.create({
   },
   bookCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFDF9',
-    borderRadius: 20,
+    backgroundColor: Colors.background,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: Colors.primaryBorder,
     padding: 18,
@@ -459,7 +443,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: Colors.unselectedCard,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -490,7 +474,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   chapterCell: {
-    backgroundColor: '#FFFDF9',
+    backgroundColor: Colors.background,
     borderRadius: 16,
     borderWidth: 2,
     borderColor: Colors.primaryBorder,
@@ -511,24 +495,24 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 14,
     alignItems: 'flex-start',
-    backgroundColor: '#FFFDF9',
+    backgroundColor: Colors.background,
   },
   verseCardHighlighted: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.unselectedCard,
+    borderColor: Colors.text,
   },
   verseNumberContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: Colors.unselectedCard,
     alignItems: 'center',
     justifyContent: 'center',
   },
   verseNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.primary,
+    color: Colors.text,
   },
   verseText: {
     flex: 1,
