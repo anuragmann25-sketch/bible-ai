@@ -186,11 +186,17 @@ function BooksListScreen({ filter, searchQuery, setSearchQuery, setFilter, onSel
         </View>
       </View>
       <FlatList
+        key={`${filter}-${searchQuery}`}
         data={filteredBooks}
         keyExtractor={(item) => item.name}
         renderItem={({ item, index }) => <BookCard book={item} onPress={() => onSelectBook(item)} index={index} />}
         contentContainerStyle={styles.bookListContent}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No books found</Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -525,5 +531,17 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.textMuted,
+    textAlign: 'center',
   },
 });
