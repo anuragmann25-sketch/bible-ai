@@ -22,7 +22,7 @@
       }
     },
     "android": {
-      "package": "com.despia.bibleai",
+      "package": "com.despia.bibleai.theultimatewarrior",
       "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
