@@ -85,5 +85,6 @@ const styles = StyleSheet.create({
   splashImage: {
     width: width * 0.5,
     height: height * 0.5,
+    marginTop: -60,
   },
 });

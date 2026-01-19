@@ -34,6 +34,13 @@
     "plugins": [
       "expo-router",
       "expo-splash-screen"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f28da5c7-4042-4b66-9e3c-8902c278e6ab"
+      }
+    },
+    "owner": "thebatman25"
   }
 }
